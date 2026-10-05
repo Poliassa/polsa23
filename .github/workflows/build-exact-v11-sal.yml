@@ -1,0 +1,47 @@
+name: Build Exact V11 with SAL
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Restore exact project
+        run: |
+          mkdir -p exactapp
+          base64 -d exact_v11_sal_project.b64 > exactapp.zip
+          unzip -q exactapp.zip -d exactapp
+      - name: Install Android SDK
+        run: |
+          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Build APK
+        working-directory: exactapp
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Copy APK
+        run: |
+          mkdir -p out
+          cp exactapp/app/build/outputs/apk/debug/app-debug.apk out/MultiCounter7_V11_STYLE_SAL.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MultiCounter7-V11-STYLE-SAL
+          path: out/MultiCounter7_V11_STYLE_SAL.apk
+          retention-days: 7
